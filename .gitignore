@@ -1,0 +1,5 @@
+venv/
+.env
+fassster-shared-service-account.json
+*.gzip
+mongo-user.txt
