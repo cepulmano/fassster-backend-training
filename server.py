@@ -20,8 +20,8 @@ class WebAppHandler(tornado.web.RequestHandler):
 
 		# Look for processed output
 		db = self.settings['fassster_mongodb']
-		mongoTraining2 = db.mongoTraining2
-		cursor = mongoTraining2.find(
+		test = db.test
+		cursor = test.find(
 			{"location": location, "as_of_date": as_of_date},
 			{"_id":0}
 		).sort([("as_of_date", -1)]).limit(1)
@@ -29,6 +29,7 @@ class WebAppHandler(tornado.web.RequestHandler):
 		for document in await cursor.to_list(length=200):
 			output = document
 
+		self.set_header("content-type","application/json")
 		if "location" in output.keys():
 			print("Document found")
 			self.write({"success": True, "data": output})
@@ -37,20 +38,20 @@ class WebAppHandler(tornado.web.RequestHandler):
 			df = pd.read_parquet(config('LINELIST'))
 			filtered = df.loc[(df["regionPSGC"] == location) & (df["Report_Date"] == as_of_date)]
 			if( len(df) > 0):
+				# Format output
 				output = {
 					"location": location,
 					"as_of_date": as_of_date,
-					"total_cases": len(df)
+					"total_cases": len(filtered)
 				}
 
 				# Insert Processed output to MongoDB
 				filterParams = { "location": location,"as_of_date": as_of_date }
 				updateOperator = {"$set": output}
-				mongoTraining2.update_one(filterParams,updateOperator,upsert=True)
+				test.update_one(filterParams,updateOperator,upsert=True)
 
 				self.write({"success": True, "data": output})
 			else:
-				self.set_header("content-type","application/json")
 				self.write({"success": False, "message": "Error encounter in fetching the data."})
 
 application = tornado.web.Application([
